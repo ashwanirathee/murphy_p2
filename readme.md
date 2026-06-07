@@ -32,6 +32,13 @@ docker run -it --rm \
   --device /dev/video3 \
   -v /home/murphy/Documents/murphy_p2:/home/ubuntu/murphy_p2 \
   ros:jazzy-perception
+
+source install/setup.bash
+ros2 launch murphy_p2 bringup.launch.py \
+  event_min_interval_sec:=5.0 \
+  event_max_silence_sec:=5.0 \
+  camera_uids:="[0, 2]" \
+  camera_labels:='["left", "right"]'
 ```
 
 ### Nodes:
@@ -75,6 +82,12 @@ pactl set-sink-volume bluez_output.41_42_12_84_8B_60.1 40%
 chmod +x /home/murphy/Documents/murphy_p2/src/speaker_bridge.sh
 apt update
 apt install -y espeak alsa-utils
+sudo apt install -y sox
+
+docker exec -it murphy_ros bash
+cd ~/murphy_p2
+source ~/murphy_p2/install/setup.bash
+ros2 topic pub --once /audio/heard_text std_msgs/msg/String "{data: 'how many cans are there and are of which brand? what about bottles?'}"
 
 # run the speaker bridge in the host machine to forward audio from ROS to the bluetooth speaker
 /home/murphy/Documents/murphy_p2/src/speaker_bridge.sh
@@ -96,6 +109,13 @@ docker exec -it murphy_ros bash
 cd ~/murphy_p2
 source ~/murphy_p2/install/setup.bash
 ros2 run murphy_p2 action_node
+```
+
+##### VLM Node:
+
+```
+ollama run moondream # on the host
+
 ```
 
 ### References:

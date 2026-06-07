@@ -6,6 +6,7 @@ import os
 import atexit
 import shutil
 import signal
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -33,12 +34,20 @@ class VisualProcessorNode(Node):
         # Memory/disk management parameters
         self.max_images = 10  # Keep only 100 most recent images
         self.max_dir_size_mb = 50  # Max directory size in MB
-        
+
         self.declare_parameter("camera_uids", [0, 1])
         self.declare_parameter("camera_labels", ["left", "right"])
+        self.declare_parameter("event_min_interval_sec", 0.5)
+        self.declare_parameter("event_max_silence_sec", 2.0)
 
         camera_uids = list(self.get_parameter("camera_uids").value)
         camera_labels = list(self.get_parameter("camera_labels").value)
+        self.event_min_interval_sec = float(
+            self.get_parameter("event_min_interval_sec").value
+        )
+        self.event_max_silence_sec = float(
+            self.get_parameter("event_max_silence_sec").value
+        )
 
         if len(camera_labels) < len(camera_uids):
             camera_labels.extend(str(uid) for uid in camera_uids[len(camera_labels) :])
@@ -62,6 +71,8 @@ class VisualProcessorNode(Node):
         self.create_timer(10.0, self.save_image_periodic)
 
         self.event_pub = self.create_publisher(String, "/vision/events", 10)
+        self.last_published_event_keys = {}
+        self.last_event_publish_times = {}
 
         atexit.register(self._cleanup_image_directory)
         signal.signal(signal.SIGINT, self._handle_shutdown_signal)
@@ -88,10 +99,10 @@ class VisualProcessorNode(Node):
             self.save_image_decision(frame, event)
             camera_state["last_obstacle_state"] = event["obstacle_like"]
 
-        out_msg = String()
-        out_msg.data = json.dumps(event)
-
-        self.event_pub.publish(out_msg)
+        if self.should_publish_event(event):
+            out_msg = String()
+            out_msg.data = json.dumps(event)
+            self.event_pub.publish(out_msg)
 
     def save_latest_frame(self, frame, camera_uid):
         """
@@ -152,23 +163,52 @@ class VisualProcessorNode(Node):
             files = sorted(
                 Path(self.image_save_dir).glob("*.jpg"),
                 key=lambda p: p.stat().st_mtime,
-                reverse=True
+                reverse=True,
             )
-            
+
             # Check max image count
             if len(files) > self.max_images:
                 for old_file in files[self.max_images:]:
                     old_file.unlink()
                     self.get_logger().debug(f"Deleted old image: {old_file.name}")
-            
+
             # Check total directory size
             total_size_mb = sum(f.stat().st_size for f in files) / (1024 * 1024)
             if total_size_mb > self.max_dir_size_mb:
                 for old_file in files[self.max_images // 2:]:
                     old_file.unlink()
-                    self.get_logger().debug(f"Deleted image due to size limit: {old_file.name}")
+                    self.get_logger().debug(
+                        f"Deleted image due to size limit: {old_file.name}"
+                    )
         except Exception as e:
             self.get_logger().warning(f"Error during image cleanup: {e}")
+
+    def should_publish_event(self, event):
+        camera_uid = event.get("camera_uid", "unknown")
+        now = time.time()
+        event_key = (
+            bool(event.get("obstacle_like", False)),
+            event.get("region", "unknown"),
+        )
+
+        last_key = self.last_published_event_keys.get(camera_uid)
+        last_time = self.last_event_publish_times.get(camera_uid, 0.0)
+        elapsed = now - last_time
+
+        if last_key is None:
+            should_publish = True
+        elif event_key != last_key and elapsed >= self.event_min_interval_sec:
+            should_publish = True
+        elif elapsed >= self.event_max_silence_sec:
+            should_publish = True
+        else:
+            should_publish = False
+
+        if should_publish:
+            self.last_published_event_keys[camera_uid] = event_key
+            self.last_event_publish_times[camera_uid] = now
+
+        return should_publish
 
     def destroy_node(self):
         self._cleanup_image_directory()

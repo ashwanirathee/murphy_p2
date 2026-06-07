@@ -27,6 +27,8 @@ setup(
             "cameras_node = murphy_p2.cameras_node:main",
             "visual_processor_node = murphy_p2.visual_processor_node:main",
             "brain_node = murphy_p2.brain_node:main",
+            "audio_node = murphy_p2.audio_node:main",
+            "ear_node = murphy_p2.ear_node:main",
         ],
     },
 )

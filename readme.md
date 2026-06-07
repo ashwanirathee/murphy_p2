@@ -1,4 +1,8 @@
+## Murphy P2: Physical AI Platform
 
+This repository contains the code for Murphy P2, a Physical AI platform for running experiments related to robot perception, reasoning, and control. The system is built around a Raspberry Pi 5 and uses ROS 2 as the software framework to modularize the different components of the robot.
+
+### Setup Instructions:
 ```
 mkdir -p /home/murphy/Documents/murphy_p2/src
 cd /home/murphy/Documents/murphy_p2/src
@@ -29,7 +33,9 @@ docker run -it --rm \
   ros:jazzy-perception
 ```
 
-Nodes:
+### Nodes:
+
+##### Cameras Node:
 ```
 cd ~/murphy_p2
 source ~/murphy_p2/install/setup.bash
@@ -38,12 +44,14 @@ ros2 run murphy_p2 cameras_node --ros-args \
   -p camera_labels:="[left, right]"
 ```
 
+##### Visual Processor Node:
 ```
 cd ~/murphy_p2
 source ~/murphy_p2/install/setup.bash
 ros2 run murphy_p2 visual_processor_node
 ```
 
+##### Brain Node:
 ```
 docker exec -it murphy_ros bash
 cd ~/murphy_p2
@@ -51,6 +59,34 @@ source ~/murphy_p2/install/setup.bash
 ros2 run murphy_p2 brain_node
 ```
 
+##### Audio Node and its bluetooth bridge:
 ```
-ros2 topic list
+docker exec -it murphy_ros bash
+cd ~/murphy_p2
+source ~/murphy_p2/install/setup.bash
+ros2 run murphy_p2 audio_node
+
+# audio control
+pactl list short sinks
+pactl set-sink-volume bluez_output.41_42_12_84_8B_60.1 40%
+
+# audio bridge controlling the bluetooth speaker from the host machine
+chmod +x /home/murphy/Documents/murphy_p2/src/speaker_bridge.sh
+apt update
+apt install -y espeak alsa-utils
+
+# run the speaker bridge in the host machine to forward audio from ROS to the bluetooth speaker
+/home/murphy/Documents/murphy_p2/src/speaker_bridge.sh
 ```
+
+##### Ear Node:
+
+```
+docker exec -it murphy_ros bash
+cd ~/murphy_p2
+source ~/murphy_p2/install/setup.bash
+ros2 run murphy_p2 ear_node
+```
+
+### References:
+- ROS 2 documentation: https://docs.ros.org/

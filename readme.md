@@ -88,5 +88,14 @@ source ~/murphy_p2/install/setup.bash
 ros2 run murphy_p2 ear_node
 ```
 
+##### Action Node:
+
+```
+docker exec -it murphy_ros bash
+cd ~/murphy_p2
+source ~/murphy_p2/install/setup.bash
+ros2 run murphy_p2 action_node
+```
+
 ### References:
 - ROS 2 documentation: https://docs.ros.org/

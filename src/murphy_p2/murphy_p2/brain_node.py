@@ -24,13 +24,23 @@ class BrainNode(Node):
         )
 
         self.speech_pub = self.create_publisher(
-            String, 
-            "/audio/speech_text", 
-            10
+            String,
+            "/audio/speech_text",
+            10,
+        )
+
+        # New: publish structured robot actions
+        self.action_pub = self.create_publisher(
+            String,
+            "/brain/actions",
+            10,
         )
 
         self.last_vision_decision = None
-        self.last_message = None
+        self.last_action_key = None
+        self.last_event = None
+
+        self.quiet_mode = False
 
         self.get_logger().info("Brain node started.")
 
@@ -43,7 +53,10 @@ class BrainNode(Node):
 
         self.last_event = event
 
-        decision = self.make_vision_decision(event)
+        decision, action = self.make_vision_decision(event)
+
+        if action is not None:
+            self.publish_action(action)
 
         if decision is None:
             return
@@ -52,23 +65,55 @@ class BrainNode(Node):
             return
 
         self.last_vision_decision = decision
-        self.say(decision)
+
+        if not self.quiet_mode:
+            self.say(decision)
 
     def make_vision_decision(self, event):
         obstacle_like = event.get("obstacle_like", False)
         region = event.get("region", "center")
 
         if not obstacle_like:
-            return None
+            action = {
+                "action": "idle",
+                "priority": "low",
+                "reason": "no_obstacle",
+            }
+            return None, action
 
         if region == "center":
-            return "Obstacle ahead."
-        elif region == "left":
-            return "Obstacle on the left."
-        elif region == "right":
-            return "Obstacle on the right."
+            action = {
+                "action": "stop",
+                "priority": "high",
+                "reason": "obstacle_center",
+            }
+            return "Obstacle ahead.", action
 
-        return "Obstacle detected."
+        elif region == "left":
+            action = {
+                "action": "move_suggestion",
+                "direction": "right",
+                "priority": "normal",
+                "reason": "obstacle_left",
+            }
+            return "Obstacle on the left.", action
+
+        elif region == "right":
+            action = {
+                "action": "move_suggestion",
+                "direction": "left",
+                "priority": "normal",
+                "reason": "obstacle_right",
+            }
+            return "Obstacle on the right.", action
+
+        action = {
+            "action": "warn",
+            "priority": "normal",
+            "message": "Obstacle detected",
+            "reason": "unknown_region",
+        }
+        return "Obstacle detected.", action
 
     def heard_callback(self, msg):
         text = msg.data.strip().lower()
@@ -76,16 +121,22 @@ class BrainNode(Node):
         self.get_logger().info(f"Received user command: {text}")
 
         if text in ["hello", "hi"]:
+            self.quiet_mode = False
             self.say("Hello. Murphy P2 is online.")
 
         elif text in ["stop", "quiet", "silence"]:
+            self.quiet_mode = True
             self.say("Okay. I will stay quiet.")
+
+        elif text in ["speak", "talk", "resume"]:
+            self.quiet_mode = False
+            self.say("Okay. I will speak again.")
 
         elif text in ["what do you see", "describe", "describe scene"]:
             self.describe_last_event()
 
         elif text in ["status", "system status"]:
-            self.say("Camera, visual processor, brain, and audio nodes are active.")
+            self.say("Camera, visual processor, brain, audio, ear, and action nodes are active.")
 
         else:
             self.say(f"I heard: {text}")
@@ -108,6 +159,32 @@ class BrainNode(Node):
         msg.data = text
         self.speech_pub.publish(msg)
         self.get_logger().info(f"Brain says: {text}")
+
+    def publish_action(self, action):
+        """
+        Publish structured actions to /brain/actions.
+
+        The action_node can later convert these into motors, LEDs,
+        haptics, or navigation commands.
+        """
+        action_type = action.get("action", "unknown")
+        direction = action.get("direction", "")
+        reason = action.get("reason", "")
+
+        action_key = f"{action_type}:{direction}:{reason}"
+
+        # Avoid spamming the exact same action every frame
+        if action_key == self.last_action_key:
+            return
+
+        self.last_action_key = action_key
+
+        msg = String()
+        msg.data = json.dumps(action)
+        self.action_pub.publish(msg)
+
+        self.get_logger().info(f"Brain action: {msg.data}")
+
 
 def main(args=None):
     rclpy.init(args=args)

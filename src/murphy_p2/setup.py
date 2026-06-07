@@ -29,6 +29,7 @@ setup(
             "brain_node = murphy_p2.brain_node:main",
             "audio_node = murphy_p2.audio_node:main",
             "ear_node = murphy_p2.ear_node:main",
+            "action_node = murphy_p2.action_node:main",
         ],
     },
 )

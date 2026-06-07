@@ -30,6 +30,7 @@ setup(
             "audio_node = murphy_p2.audio_node:main",
             "ear_node = murphy_p2.ear_node:main",
             "action_node = murphy_p2.action_node:main",
+            "vlm_node = murphy_p2.vlm_node:main",
         ],
     },
 )

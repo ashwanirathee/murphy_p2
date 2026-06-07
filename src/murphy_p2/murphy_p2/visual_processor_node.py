@@ -26,6 +26,10 @@ class VisualProcessorNode(Node):
         self.image_save_dir = os.path.expanduser("~/murphy_p2/vision_images")
         os.makedirs(self.image_save_dir, exist_ok=True)
         
+        self.workspace_dir = os.path.expanduser("~/murphy_p2")
+        self.latest_image_path = os.path.join(self.workspace_dir, "latest_frame.jpg")
+        self.latest_image_meta_path = os.path.join(self.workspace_dir, "latest_frame.json")
+        
         # Memory/disk management parameters
         self.max_images = 10  # Keep only 100 most recent images
         self.max_dir_size_mb = 50  # Max directory size in MB
@@ -67,6 +71,7 @@ class VisualProcessorNode(Node):
 
     def image_callback(self, msg, camera_uid):
         frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
+        self.save_latest_frame(frame, camera_uid)
         camera_state = self.camera_states.get(camera_uid)
         if camera_state is None:
             self.get_logger().warning(f"Received frame for unknown camera uid {camera_uid}.")
@@ -87,6 +92,24 @@ class VisualProcessorNode(Node):
         out_msg.data = json.dumps(event)
 
         self.event_pub.publish(out_msg)
+
+    def save_latest_frame(self, frame, camera_uid):
+        """
+        Save a stable latest image for the VLM node.
+        This file is overwritten every frame, so it does not grow disk usage.
+        """
+        cv2.imwrite(self.latest_image_path, frame)
+
+        camera_state = self.camera_states.get(camera_uid, {})
+        meta = {
+            "image_path": self.latest_image_path,
+            "camera_uid": camera_uid,
+            "camera_label": camera_state.get("label", "unknown"),
+            "timestamp": datetime.now().isoformat(),
+        }
+
+        with open(self.latest_image_meta_path, "w") as f:
+            json.dump(meta, f)
 
     def save_image_periodic(self):
         """Save the latest frame every 10 seconds"""

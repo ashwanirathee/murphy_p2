@@ -24,6 +24,7 @@ source install/setup.bash
 docker run -it --rm \
   --name murphy_ros \
   --user $(id -u):$(id -g) \
+  --add-host=host.docker.internal:host-gateway \
   --group-add video \
   --device /dev/video0 \
   --device /dev/video1 \

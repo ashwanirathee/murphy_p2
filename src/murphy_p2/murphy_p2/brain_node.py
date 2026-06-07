@@ -1,5 +1,6 @@
 import json
 import rclpy
+import os
 
 from rclpy.node import Node
 from std_msgs.msg import String
@@ -8,6 +9,12 @@ from std_msgs.msg import String
 class BrainNode(Node):
     def __init__(self):
         super().__init__("brain_node")
+        self.declare_parameter(
+            "latest_image_path",
+            "/home/ubuntu/murphy_p2/latest_frame.jpg",
+        )
+
+        self.latest_image_path = self.get_parameter("latest_image_path").value
 
         self.vision_sub = self.create_subscription(
             String,
@@ -36,9 +43,23 @@ class BrainNode(Node):
             10,
         )
 
+        self.vlm_question_pub = self.create_publisher(
+            String,
+            "/vlm/questions",
+            10,
+        )
+
+        self.vlm_answer_sub = self.create_subscription(
+            String,
+            "/vlm/answers",
+            self.vlm_answer_callback,
+            10,
+        )
+
         self.last_vision_decision = None
         self.last_action_key = None
         self.last_event = None
+        self.last_vlm_question = None
 
         self.quiet_mode = False
 
@@ -138,8 +159,16 @@ class BrainNode(Node):
         elif text in ["status", "system status"]:
             self.say("Camera, visual processor, brain, audio, ear, and action nodes are active.")
 
+        elif text.startswith("ask vlm "):
+            question = text[len("ask vlm ") :].strip()
+            self.ask_vlm(question)
+
+        elif text in ["look carefully", "use vlm", "analyze image"]:
+            self.ask_vlm("Describe what you see in the image.")
+
         else:
-            self.say(f"I heard: {text}")
+            # self.say(f"I heard: {text}")
+            self.ask_vlm(text)
 
     def describe_last_event(self):
         if self.last_event is None:
@@ -185,6 +214,55 @@ class BrainNode(Node):
 
         self.get_logger().info(f"Brain action: {msg.data}")
 
+    def ask_vlm(self, question):
+        if not question:
+            self.say("I did not receive a question for the vision model.")
+            return
+
+        if not os.path.exists(self.latest_image_path):
+            self.say("I do not have a recent image for the vision model yet.")
+            self.get_logger().warn(
+                f"Latest image does not exist: {self.latest_image_path}"
+            )
+            return
+
+        request = {
+            "type": "vlm_question",
+            "question": question,
+            "image_path": self.latest_image_path,
+        }
+
+        msg = String()
+        msg.data = json.dumps(request)
+        self.vlm_question_pub.publish(msg)
+
+        self.last_vlm_question = question
+
+        self.get_logger().info(f"Asked VLM: {msg.data}")
+
+        if not self.quiet_mode:
+            self.say("Let me look.")
+            
+    def vlm_answer_callback(self, msg):
+        try:
+            response = json.loads(msg.data)
+        except json.JSONDecodeError:
+            self.get_logger().warn(f"Invalid VLM answer JSON: {msg.data}")
+            return
+
+        answer = response.get("answer", "").strip()
+        success = response.get("success", False)
+
+        if not answer:
+            answer = "I did not get an answer from the vision model."
+
+        if not success:
+            self.get_logger().warn(f"VLM returned unsuccessful response: {answer}")
+
+        self.get_logger().info(f"VLM answer received: {answer}")
+
+        if not self.quiet_mode:
+            self.say(answer)
 
 def main(args=None):
     rclpy.init(args=args)

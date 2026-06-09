@@ -11,10 +11,9 @@ from datetime import datetime
 from pathlib import Path
 
 from rclpy.node import Node
-from sensor_msgs.msg import Image
+from sensor_msgs.msg import CompressedImage, Image
 from std_msgs.msg import String
 from cv_bridge import CvBridge
-
 
 class VisualProcessorNode(Node):
     def __init__(self):
@@ -39,6 +38,10 @@ class VisualProcessorNode(Node):
         self.declare_parameter("camera_labels", ["left", "right"])
         self.declare_parameter("event_min_interval_sec", 0.5)
         self.declare_parameter("event_max_silence_sec", 2.0)
+        self.declare_parameter("enable_2dobd", True)
+        self.declare_parameter("enable_3dobd", False)
+        self.declare_parameter("yolo_camera_uid", 0)
+        self.declare_parameter("yolo_debug_jpeg_quality", 70)
 
         camera_uids = list(self.get_parameter("camera_uids").value)
         camera_labels = list(self.get_parameter("camera_labels").value)
@@ -48,9 +51,21 @@ class VisualProcessorNode(Node):
         self.event_max_silence_sec = float(
             self.get_parameter("event_max_silence_sec").value
         )
+        self.enable_2dobd = bool(self.get_parameter("enable_2dobd").value)
+        self.enable_3dobd = bool(self.get_parameter("enable_3dobd").value)
+        self.yolo_camera_uid = int(self.get_parameter("yolo_camera_uid").value)
+        self.yolo_debug_jpeg_quality = int(
+            self.get_parameter("yolo_debug_jpeg_quality").value
+        )
 
         if len(camera_labels) < len(camera_uids):
             camera_labels.extend(str(uid) for uid in camera_uids[len(camera_labels) :])
+
+        if self.yolo_camera_uid not in camera_uids:
+            self.get_logger().warning(
+                f"yolo_camera_uid {self.yolo_camera_uid} is not in camera_uids {camera_uids}. "
+                "YOLO detections will never run until they match."
+            )
 
         self.camera_states = {}
         for uid, label in zip(camera_uids, camera_labels):
@@ -68,7 +83,7 @@ class VisualProcessorNode(Node):
             )
 
         # Timer for periodic image saving (every 10 seconds)
-        self.create_timer(10.0, self.save_image_periodic)
+        # self.create_timer(10.0, self.save_image_periodic)
 
         self.event_pub = self.create_publisher(String, "/vision/events", 10)
         self.last_published_event_keys = {}
@@ -79,10 +94,32 @@ class VisualProcessorNode(Node):
         signal.signal(signal.SIGTERM, self._handle_shutdown_signal)
 
         self.get_logger().info("Visual processor node started.")
+        self.get_logger().info(
+            f"OBD modes: 2D={self.enable_2dobd}, 3D={self.enable_3dobd}"
+        )
+        self.get_logger().info(f"YOLO camera uid: {self.yolo_camera_uid}")
+
+        if self.enable_2dobd:
+            from ultralytics import YOLO
+
+            self.model = None
+            self.yolo_imgsz = 320
+            self.yolo_conf = 0.4
+            self.yolo_min_interval_sec = 0.5  # 2 FPS max
+            self.last_yolo_time = 0.0
+            self.last_yolo_event = None
+            self.yolo_debug_pub = None
+
+            self.model = YOLO("~/murphy_p2/yolov8n.pt")
+            self.yolo_debug_pub = self.create_publisher(
+                CompressedImage,
+                "/vision/yolo_debug_image/compressed",
+                1,
+            )
 
     def image_callback(self, msg, camera_uid):
         frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
-        self.save_latest_frame(frame, camera_uid)
+
         camera_state = self.camera_states.get(camera_uid)
         if camera_state is None:
             self.get_logger().warning(f"Received frame for unknown camera uid {camera_uid}.")
@@ -90,7 +127,21 @@ class VisualProcessorNode(Node):
 
         camera_state["latest_frame"] = frame
 
-        event = self.analyze_frame(frame)
+        now = time.time()
+
+        if self.enable_2dobd and camera_uid == self.yolo_camera_uid:
+            # Run YOLO at limited rate
+            if now - self.last_yolo_time >= self.yolo_min_interval_sec:
+                self.last_yolo_time = now
+                event = self.analyze_frame_yolo(frame)
+                self.last_yolo_event = event
+            elif self.last_yolo_event is not None:
+                event = dict(self.last_yolo_event)
+            else:
+                event = self.analyze_frame(frame)
+        else:
+            event = self.analyze_frame(frame)
+
         event["camera_uid"] = camera_uid
         event["camera_label"] = camera_state["label"]
 
@@ -104,42 +155,97 @@ class VisualProcessorNode(Node):
             out_msg.data = json.dumps(event)
             self.event_pub.publish(out_msg)
 
-    def save_latest_frame(self, frame, camera_uid):
-        """
-        Save a stable latest image for the VLM node.
-        This file is overwritten every frame, so it does not grow disk usage.
-        """
-        cv2.imwrite(self.latest_image_path, frame)
+    def analyze_frame_yolo(self, frame):
+        height, width, _ = frame.shape
 
-        camera_state = self.camera_states.get(camera_uid, {})
-        meta = {
-            "image_path": self.latest_image_path,
-            "camera_uid": camera_uid,
-            "camera_label": camera_state.get("label", "unknown"),
-            "timestamp": datetime.now().isoformat(),
-        }
+        results = self.model.predict(
+            frame,
+            imgsz=self.yolo_imgsz,
+            device="cpu",
+            conf=self.yolo_conf,
+            verbose=False,
+        )
 
-        with open(self.latest_image_meta_path, "w") as f:
-            json.dump(meta, f)
+        debug_frame = frame.copy()
 
-    def save_image_periodic(self):
-        """Save the latest frame every 10 seconds"""
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        detections = []
+        obstacle_like = False
+        strongest_region = "unknown"
+        best_conf = 0.0
 
-        for camera_uid, camera_state in self.camera_states.items():
-            frame = camera_state["latest_frame"]
-            if frame is None:
-                continue
+        for r in results:
+            for box in r.boxes:
+                cls_id = int(box.cls[0])
+                conf = float(box.conf[0])
+                label = self.model.names[cls_id]
 
-            label = camera_state["label"]
-            filename = os.path.join(
-                self.image_save_dir,
-                f"frame_periodic_{camera_uid}_{label}_{timestamp}.jpg",
+                x1, y1, x2, y2 = box.xyxy[0].tolist()
+                x1, y1, x2, y2 = map(int, [x1, y1, x2, y2])
+
+                cx = (x1 + x2) / 2.0
+                if cx < width / 3:
+                    region = "left"
+                elif cx < 2 * width / 3:
+                    region = "center"
+                else:
+                    region = "right"
+
+                # Draw YOLO box
+                cv2.rectangle(debug_frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                text = f"{label} {conf:.2f} {region}"
+                cv2.putText(
+                    debug_frame,
+                    text,
+                    (x1, max(20, y1 - 8)),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.6,
+                    (0, 255, 0),
+                    2,
+                )
+
+                detections.append({
+                    "label": label,
+                    "confidence": conf,
+                    "bbox": [x1, y1, x2, y2],
+                    "region": region,
+                })
+
+                if label in ["person", "chair", "couch", "bed", "dining table", "tv", "backpack"]:
+                    obstacle_like = True
+                    if conf > best_conf:
+                        best_conf = conf
+                        strongest_region = region
+
+        # Optional: draw region dividers
+        cv2.line(debug_frame, (width // 3, 0), (width // 3, height), (255, 255, 0), 1)
+        cv2.line(debug_frame, (2 * width // 3, 0), (2 * width // 3, height), (255, 255, 0), 1)
+
+        # Publish compressed debug image to reduce transport bandwidth.
+        if self.yolo_debug_pub is not None:
+            ok, encoded = cv2.imencode(
+                ".jpg",
+                debug_frame,
+                [int(cv2.IMWRITE_JPEG_QUALITY), self.yolo_debug_jpeg_quality],
             )
-            cv2.imwrite(filename, frame)
-            self.get_logger().info(f"Saved periodic image: {filename}")
+            if ok:
+                debug_msg = CompressedImage()
+                debug_msg.header.stamp = self.get_clock().now().to_msg()
+                debug_msg.header.frame_id = "yolo_debug"
+                debug_msg.format = "jpeg"
+                debug_msg.data = encoded.tobytes()
+                self.yolo_debug_pub.publish(debug_msg)
 
-        self.cleanup_old_images()
+        if not obstacle_like:
+            strongest_region = "unknown"
+
+        return {
+            "type": "yolo_observation",
+            "obstacle_like": obstacle_like,
+            "region": strongest_region,
+            "detections": detections,
+            "image_width": int(width),
+            "image_height": int(height),
+        }
 
     def save_image_decision(self, frame, event):
         """Save image when a decision is made (obstacle state changes)"""

@@ -42,10 +42,14 @@ ros2 launch murphy_p2 bringup.launch.py \
   event_max_silence_sec:=5.0 \
   camera_uids:="[0, 2]" \
   camera_labels:='["left", "right"]' \
-  enable_slam:=true \
+  yolo_camera_uid:=2 \
+  enable_slam:=false \
   enable_ear:=false \
   enable_audio:=false \
-  enable_vlm:=false
+  enable_vlm:=false \
+  enable_2dobd:=true \
+  enable_3dobd:=false \
+  yolo_camera_uid:=0 
   
 
 docker exec -u 0 -it murphy_ros bash
@@ -64,6 +68,42 @@ source install/setup.bash
 ros2 launch foxglove_bridge foxglove_bridge_launch.xml
 
 ws://192.168.68.59:8765
+
+docker exec -it murphy_ros bash
+cd ~/murphy_p2
+source install/setup.bash
+python3 -m pip install --upgrade pip
+python3 -m pip install ultralytics opencv-python-headless
+
+
+docker exec -u 0 -it murphy_ros bash
+sudo apt update
+sudo apt install -y python3-pip
+apt update
+apt install -y python3-pip python3-opencv
+cd /home/ubuntu/murphy_p2
+source install/setup.bash
+
+python3 -m pip install --break-system-packages ultralytics --no-deps
+python3 -m pip install --break-system-packages --no-cache-dir matplotlib \
+  torch torchvision \
+  --index-url https://download.pytorch.org/whl/cpu
+python3 -m pip install --break-system-packages matplotlib
+python3 - <<'PY'
+from ultralytics import YOLO
+
+model = YOLO("yolov8n.pt")
+results = model.predict(
+    "/home/ubuntu/murphy_p2/latest_frame.jpg",
+    imgsz=320,
+    device="cpu",
+    verbose=True,
+)
+
+for r in results:
+    print(r.boxes)
+PY
+
 ```
 
 ### Nodes:
@@ -199,6 +239,54 @@ global‑shutter and rolling‑shutter cameras, thermal imagers, LiDAR/ToF modul
 VLMs for auto-labeling or offline perception tasks
 metric-semantic mapping, visual relocalization, and SLAM
 
+```
+
+```
+- Prefer `MJPG` at higher resolutions if bandwidth is a concern.
+- Prefer `YUYV` when easier pixel interpretation matters more than bandwidth.
+```
+
+Goals:
+```
+scalable realtime systems that process stream data
+```
+
+Res:
+```
+Requirements
+
+    Design and implement SLAM and localization systems (visual, visual-inertial, lidar, or multi-sensor)
+    Develop and integrate computer vision pipelines for perception tasks such as feature extraction, tracking, mapping, and scene understanding
+    Implement and optimize estimation algorithms (e.g., filtering, optimization-based methods)
+    Fuse data from multiple sensors (cameras, IMUs, lidars, depth sensors)
+    Evaluate perception system performance using real-world data and metrics
+    Optimize algorithms for real-time performance and robustness
+    Collaborate with controls and planning teams to support downstream autonomy
+    Maintain clean, well-tested, production-quality code
+    Contribute to tooling, datasets, and evaluation frameworks
+
+Required Qualifications
+
+    Strong background in robotics perception or computer vision
+    Experience implementing SLAM or localization systems in practice
+    Solid understanding of:
+    3D geometry and coordinate transformations
+    Camera models and calibration
+    Feature-based and/or direct visual methods
+    Probabilistic state estimation
+    Proficiency in C++ and/or Python
+    Experience working in Linux environments
+    Familiarity with robotics software stacks (e.g., ROS / ROS 2)
+    Strong debugging and data analysis skills
+
+Preferred Qualifications
+
+    Experience with specific SLAM frameworks (e.g., ORB-SLAM, VINS, Cartographer, GTSAM)
+    Experience with lidar-based perception and mapping
+    Familiarity with deep learning–based perception models
+    Experience deploying perception systems on real robots
+    Knowledge of GPU acceleration (CUDA, OpenCL)
+    Experience with dataset curation and annotation
 ```
 
 ### References:

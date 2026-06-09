@@ -1,7 +1,7 @@
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.conditions import IfCondition
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node
 
 
@@ -12,6 +12,9 @@ def generate_launch_description():
     ollama_url = LaunchConfiguration("ollama_url")
     vlm_model = LaunchConfiguration("vlm_model")
     use_espeak = LaunchConfiguration("use_espeak")
+    enable_2dobd = LaunchConfiguration("enable_2dobd")
+    enable_3dobd = LaunchConfiguration("enable_3dobd")
+    yolo_camera_uid = LaunchConfiguration("yolo_camera_uid")
     enable_ear = LaunchConfiguration("enable_ear")
     enable_vlm = LaunchConfiguration("enable_vlm")
     enable_slam = LaunchConfiguration("enable_slam")
@@ -22,6 +25,9 @@ def generate_launch_description():
     slam_principal_point_x = LaunchConfiguration("slam_principal_point_x")
     slam_principal_point_y = LaunchConfiguration("slam_principal_point_y")
     slam_publish_debug_image = LaunchConfiguration("slam_publish_debug_image")
+    enable_any_obd = PythonExpression(
+        ["'", enable_2dobd, "' == 'true' or '", enable_3dobd, "' == 'true'"]
+    )
 
     return LaunchDescription(
         [
@@ -54,6 +60,21 @@ def generate_launch_description():
                 "use_espeak",
                 default_value="true",
                 description="Whether audio_node should speak with espeak-ng.",
+            ),
+            DeclareLaunchArgument(
+                "enable_2dobd",
+                default_value="true",
+                description="Start the 2D obstacle detection visual processor node.",
+            ),
+            DeclareLaunchArgument(
+                "enable_3dobd",
+                default_value="false",
+                description="Enable 3D obstacle detection mode in visual_processor_node.",
+            ),
+            DeclareLaunchArgument(
+                "yolo_camera_uid",
+                default_value="0",
+                description="Camera uid whose image stream should be used by YOLO.",
             ),
             DeclareLaunchArgument(
                 "event_min_interval_sec",
@@ -128,8 +149,12 @@ def generate_launch_description():
                         "camera_labels": camera_labels,
                         "event_min_interval_sec": event_min_interval_sec,
                         "event_max_silence_sec": event_max_silence_sec,
+                        "enable_2dobd": enable_2dobd,
+                        "enable_3dobd": enable_3dobd,
+                        "yolo_camera_uid": yolo_camera_uid,
                     }
                 ],
+                condition=IfCondition(enable_any_obd),
             ),
             Node(
                 package="murphy_p2",

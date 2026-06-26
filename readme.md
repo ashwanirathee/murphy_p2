@@ -1,4 +1,4 @@
-## Murphy P2: Physical AI Platform
+## Murphy P2 Robot
 
 This repository contains the code for Murphy P2, a Physical AI platform for running experiments related to robot perception, reasoning, and control. The system is built around a Raspberry Pi 5 and uses ROS 2 as the software framework to modularize the different components of the robot.
 
@@ -181,112 +181,6 @@ ros2 run murphy_p2 action_node
 ```
 ollama run moondream # on the host
 
-```
-
-##### Remaining:
-```
-- OTA updates
-- simulation + physical hardware
-- kinematics, dynamics, control theory, and state estimation in simulation + sensor fusion across IMU, lidar, cameras, and force/torque sensors
-- performance optimization, multithreading, memory management, and real-time systems; Python for tooling and scripting. devbuggin
-- embedded or low-level systems and familiarity with communication protocols such as CAN, EtherCAT, Ethernet, and serial
--  MuJoCo, Gazebo, or NVIDIA Isaac Sim all work
-- SLAM, path planning, or perception pipelines
-- reinforcement learning or imitation learning workflows and deploying learned policies to hardware
-- GPU/MPS
-
-VLA models:
-
-- OpenVLA — best practical/open baseline.
-- π0 / openpi — best “physical AI frontier” direction.
-- RT-2 — best conceptual foundation.
-- Octo / Diffusion Policy — important robot-policy baselines.
-- ChatVLA-2 — interesting for reasoning-heavy embodied agents.
-- Gemini Robotics Model
-
-Probability/Statistic/Linear Algebra/ML/DL/Vision/DSA
-
-- perception, reconstruction, diffusion, world models and pre training vision models.
-- BEV, Sparse Transformer architectures and Vision-Language Models (VLMs)
-- object detection, segmentation, point cloud processing
-- transformer architectures, attention mechanisms, and modern generative modeling (diffusion, flow matching) 
-- representation learning from real world.
-- Experience streaming video at scale — RTSP, GStreamer, multi-cam sync, edge-to-cloud pipelines.
-
-Embedded Firmware
-Language: C++, Python
-ML Frameworks: PyTorch
-Device: Jetson, Pi, Qualcomm
-Inference Engines: TensorRT, ONNX on GPU/FPGA achieving >= 500Hz for microcontrollers (STM32, NXP, TI). VHDL/Verilog within RTOS environments (FreeRTOS, Zephyr).
-Classification: 
-Object Detection: 2D/3D, YOLO, RT-DETR, CNNs, OWLv2, BoxerNet. Yolo
-Object Tracking: 
-Segmentation:
-Depth Estimation:
-Pose Estimation:
-ROS2
-Docker
-CI/CD
-Sensor Fusion/Calibration. Data Synchronization: RGB, thermal, LiDAR/ToF, IMU, encoder.  robust, real‑time Regions of Interest (ROIs).
-State Estimation: Kalman filters, factor graphs
-Techniques:  extrinsic calibration, SLAM, visual odometry, point cloud registration
-Develop dashboards and telemetry for drift analysis, hardware health monitoring, performance metrics, and automated retraining triggers.
-
-low-level image-processing techniques, such as deconvolution, low SNR detection, and motion-isolation techniques.
-
-global‑shutter and rolling‑shutter cameras, thermal imagers, LiDAR/ToF modules, IMUs) over GigE Vision, USB3 Vision, CAN, SPI, and I²C protocols; 
-
-VLMs for auto-labeling or offline perception tasks
-metric-semantic mapping, visual relocalization, and SLAM
-
-```
-
-```
-- Prefer `MJPG` at higher resolutions if bandwidth is a concern.
-- Prefer `YUYV` when easier pixel interpretation matters more than bandwidth.
-```
-
-Goals:
-```
-scalable realtime systems that process stream data
-```
-
-Res:
-```
-Requirements
-
-    Design and implement SLAM and localization systems (visual, visual-inertial, lidar, or multi-sensor)
-    Develop and integrate computer vision pipelines for perception tasks such as feature extraction, tracking, mapping, and scene understanding
-    Implement and optimize estimation algorithms (e.g., filtering, optimization-based methods)
-    Fuse data from multiple sensors (cameras, IMUs, lidars, depth sensors)
-    Evaluate perception system performance using real-world data and metrics
-    Optimize algorithms for real-time performance and robustness
-    Collaborate with controls and planning teams to support downstream autonomy
-    Maintain clean, well-tested, production-quality code
-    Contribute to tooling, datasets, and evaluation frameworks
-
-Required Qualifications
-
-    Strong background in robotics perception or computer vision
-    Experience implementing SLAM or localization systems in practice
-    Solid understanding of:
-    3D geometry and coordinate transformations
-    Camera models and calibration
-    Feature-based and/or direct visual methods
-    Probabilistic state estimation
-    Proficiency in C++ and/or Python
-    Experience working in Linux environments
-    Familiarity with robotics software stacks (e.g., ROS / ROS 2)
-    Strong debugging and data analysis skills
-
-Preferred Qualifications
-
-    Experience with specific SLAM frameworks (e.g., ORB-SLAM, VINS, Cartographer, GTSAM)
-    Experience with lidar-based perception and mapping
-    Familiarity with deep learning–based perception models
-    Experience deploying perception systems on real robots
-    Knowledge of GPU acceleration (CUDA, OpenCL)
-    Experience with dataset curation and annotation
 ```
 
 ### References:

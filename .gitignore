@@ -30,3 +30,6 @@ vision_images/
 *.jpg
 *.jpeg
 *.png
+
+experimental/
+data/

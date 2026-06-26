@@ -88,11 +88,11 @@ python3 -m pip install --break-system-packages ultralytics --no-deps
 python3 -m pip install --break-system-packages --no-cache-dir matplotlib \
   torch torchvision \
   --index-url https://download.pytorch.org/whl/cpu
-python3 -m pip install --break-system-packages matplotlib
+python3 -m pip install --break-system-packages matplotlib requests onnxruntime
 python3 - <<'PY'
 from ultralytics import YOLO
 
-model = YOLO("yolov8n.pt")
+model = YOLO("/home/ubuntu/murphy_p2/yolov12n-face.onnx")
 results = model.predict(
     "/home/ubuntu/murphy_p2/latest_frame.jpg",
     imgsz=320,
@@ -185,3 +185,9 @@ ollama run moondream # on the host
 
 ### References:
 - ROS 2 documentation: https://docs.ros.org/
+- https://github.com/apple/ml-cubifyanything
+- https://arxiv.org/abs/2005.14165
+- https://arxiv.org/abs/2203.02155
+- https://arxiv.org/pdf/2412.16720
+- https://github.com/karpathy/autoresearch
+- https://github.com/facebookresearch/dinov3

@@ -5,6 +5,14 @@ import os
 from rclpy.node import Node
 from std_msgs.msg import String
 
+import requests
+import time
+
+import cv2
+import base64
+import threading
+import numpy as np
+from sensor_msgs.msg import CompressedImage
 
 class BrainNode(Node):
     def __init__(self):
@@ -63,7 +71,28 @@ class BrainNode(Node):
 
         self.quiet_mode = False
 
+        self.latest_yolo_jpeg_bytes = None
+        self.latest_yolo_image_time = 0.0
+
+        self.yolo_image_sub = self.create_subscription(
+            CompressedImage,
+            "/vision/yolo_debug_image/compressed",
+            self.yolo_image_callback,
+            10,
+        )
+
+        self.ollama_vision_url = "http://192.168.68.51:8000/image-and-say"
+
+        self.last_face_speak_time = 0.0
+        self.face_speak_cooldown_sec = 8.0
+        self.last_face_region = None
+        self.face_request_in_flight = False
+        
         self.get_logger().info("Brain node started.")
+
+    def yolo_image_callback(self, msg):
+        self.latest_yolo_jpeg_bytes = bytes(msg.data)
+        self.latest_yolo_image_time = time.time()
 
     def vision_callback(self, msg):
         try:
@@ -73,6 +102,9 @@ class BrainNode(Node):
             return
 
         self.last_event = event
+        if event.get("type") == "face_detection_observation":
+            self.maybe_say_face_event(event)
+            return 
 
         decision, action = self.make_vision_decision(event)
 
@@ -263,6 +295,77 @@ class BrainNode(Node):
 
         if not self.quiet_mode:
             self.say(answer)
+
+    def maybe_say_face_event(self, event):
+        if self.quiet_mode:
+            return
+
+        if not event.get("has_face", False):
+            return
+
+        face_coords = event.get("face_coordinates")
+        if not face_coords:
+            return
+
+        if self.latest_yolo_jpeg_bytes is None:
+            self.get_logger().warn("No YOLO compressed image received yet.")
+            return
+
+        region = face_coords.get("region", "center")
+        confidence = float(face_coords.get("confidence", 0.0))
+
+        if confidence < 0.5:
+            return
+
+        if self.face_request_in_flight:
+            return
+
+        now = time.time()
+
+        if now - self.last_face_speak_time < self.face_speak_cooldown_sec:
+            return
+
+        self.last_face_region = region
+        self.last_face_speak_time = now
+
+        prompt = (
+            f"The robot sees a person in the {region} of the image. "
+            "Look at the image and say one short funny friendly sentence to them. "
+            "Do not mention camera, face detection, bounding boxes, confidence, or location. "
+            "Keep it under 12 words."
+        )
+
+        image_b64 = base64.b64encode(self.latest_yolo_jpeg_bytes).decode("utf-8")
+
+        self.face_request_in_flight = True
+        def _send_to_ollama():
+            try:
+                response = requests.post(
+                    self.ollama_vision_url,
+                    json={
+                        "prompt": prompt,
+                        "image_base64": image_b64,
+                        "model": "qwen2.5vl:7b",
+                        "speak": True,
+                    },
+                    timeout=180.0,
+                )
+
+                if not response.ok:
+                    self.get_logger().warn(
+                        f"Ollama vision server error: {response.status_code} {response.text}"
+                    )
+                    return
+
+                self.get_logger().info("Sent YOLO compressed image to Ollama vision server.")
+
+            except Exception as e:
+                self.get_logger().warn(f"Could not call Ollama vision server: {e}")
+
+            finally:
+                self.face_request_in_flight = False
+        
+        threading.Thread(target=_send_to_ollama, daemon=True).start()
 
 def main(args=None):
     rclpy.init(args=args)

@@ -2,7 +2,7 @@
 
 R1 is a Raspberry Pi 5-based Physical AI robot platform for experiments in robot perception, reasoning, and control. It uses ROS 2 to organize the system into modular software components.
 
-![](assets/p7_2.jpg)
+![](assets/logo.jpg)
 
 ### Characteristics:
 - Always-on

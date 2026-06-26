@@ -1,6 +1,13 @@
-## Murphy P2 Robot
+# R1
 
-This repository contains the code for Murphy P2, a Physical AI platform for running experiments related to robot perception, reasoning, and control. The system is built around a Raspberry Pi 5 and uses ROS 2 as the software framework to modularize the different components of the robot.
+R1 is a Raspberry Pi 5-based Physical AI robot platform for experiments in robot perception, reasoning, and control. It uses ROS 2 to organize the system into modular software components.
+
+![](assets/p7_2.jpg)
+
+### Characteristics:
+- Always-on
+- Modular
+- Low Latency
 
 ### Setup Instructions:
 ```
@@ -182,6 +189,15 @@ ros2 run murphy_p2 action_node
 ollama run moondream # on the host
 
 ```
+#### R1 Compute Server
+
+There is need for a remote server that handle computational loads for R1 that are bigger than what the R1 can handle locally.
+
+#### R1 System Monitor
+
+We setup Grafana and Prometheus to monitor the system. It allows us to visualize the system's performance and identify potential issues. 
+
+What questions can it answer?
 
 ### References:
 - ROS 2 documentation: https://docs.ros.org/

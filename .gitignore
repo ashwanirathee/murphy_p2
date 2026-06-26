@@ -33,3 +33,4 @@ vision_images/
 
 experimental/
 data/
+.env

@@ -39,7 +39,7 @@ def generate_launch_description():
                 description="Publish tracked feature overlays.",
             ),
             Node(
-                package="murphy_slam",
+                package="r1_slam",
                 executable="monocular_slam_node",
                 name="monocular_slam_node",
                 output="screen",

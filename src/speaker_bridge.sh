@@ -1,15 +1,15 @@
 #!/bin/bash
 
-CONTAINER="murphy_ros"
-WORKDIR="/home/ubuntu/murphy_p2"
+CONTAINER="r1_ros"
+WORKDIR="/home/ubuntu/r1"
 
 TTS_ENGINE="${TTS_ENGINE:-espeak}"
 
 PIPER_BIN="${PIPER_BIN:-piper}"
 PIPER_MODEL="${PIPER_MODEL:-$HOME/piper-voices/en_US-lessac-medium.onnx}"
 
-RAW_OUT="/tmp/murphy_tts_raw.wav"
-PADDED_OUT="/tmp/murphy_tts_padded.wav"
+RAW_OUT="/tmp/r1_tts_raw.wav"
+PADDED_OUT="/tmp/r1_tts_padded.wav"
 
 LEADING_SILENCE="${LEADING_SILENCE:-0.45}"
 TTS_GAIN_DB="${TTS_GAIN_DB:--15}"

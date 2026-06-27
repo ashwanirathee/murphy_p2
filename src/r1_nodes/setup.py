@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-package_name = 'murphy_p2'
+package_name = 'r1'
 
 setup(
     name=package_name,
@@ -25,13 +25,13 @@ setup(
     },
     entry_points={
         "console_scripts": [
-            "cameras_node = murphy_p2.cameras_node:main",
-            "visual_processor_node = murphy_p2.visual_processor_node:main",
-            "brain_node = murphy_p2.brain_node:main",
-            "audio_node = murphy_p2.audio_node:main",
-            "ear_node = murphy_p2.ear_node:main",
-            "action_node = murphy_p2.action_node:main",
-            "vlm_node = murphy_p2.vlm_node:main",
+            "cameras_node = r1.cameras_node:main",
+            "visual_processor_node = r1.visual_processor_node:main",
+            "brain_node = r1.brain_node:main",
+            "audio_node = r1.audio_node:main",
+            "ear_node = r1.ear_node:main",
+            "action_node = r1.action_node:main",
+            "vlm_node = r1.vlm_node:main",
         ],
     },
 )

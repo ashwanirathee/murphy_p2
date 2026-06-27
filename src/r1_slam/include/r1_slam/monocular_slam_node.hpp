@@ -1,5 +1,5 @@
-#ifndef MURPHY_SLAM__MONOCULAR_SLAM_NODE_HPP_
-#define MURPHY_SLAM__MONOCULAR_SLAM_NODE_HPP_
+#ifndef R1_SLAM__MONOCULAR_SLAM_NODE_HPP_
+#define R1_SLAM__MONOCULAR_SLAM_NODE_HPP_
 
 #include <opencv2/core.hpp>
 #include <opencv2/features2d.hpp>
@@ -13,7 +13,7 @@
 #include <string>
 #include <vector>
 
-namespace murphy_slam
+namespace r1_slam
 {
 
 class MonocularSlamNode : public rclcpp::Node
@@ -61,6 +61,6 @@ private:
   cv::Ptr<cv::ORB> orb_detector_;
 };
 
-}  // namespace murphy_slam
+}  // namespace r1_slam
 
-#endif  // MURPHY_SLAM__MONOCULAR_SLAM_NODE_HPP_
+#endif  // R1_SLAM__MONOCULAR_SLAM_NODE_HPP_

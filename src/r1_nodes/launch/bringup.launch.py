@@ -43,7 +43,7 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "latest_image_path",
-                default_value="/home/ubuntu/murphy_p2/latest_frame.jpg",
+                default_value="/home/ubuntu/r1/latest_frame.jpg",
                 description="Path shared by the visual processor and brain/VLM nodes.",
             ),
             DeclareLaunchArgument(
@@ -127,7 +127,7 @@ def generate_launch_description():
                 description="Publish a debug image with tracked features for monocular SLAM.",
             ),
             Node(
-                package="murphy_p2",
+                package="r1",
                 executable="cameras_node",
                 name="cameras_node",
                 output="screen",
@@ -139,7 +139,7 @@ def generate_launch_description():
                 ],
             ),
             Node(
-                package="murphy_p2",
+                package="r1",
                 executable="visual_processor_node",
                 name="visual_processor_node",
                 output="screen",
@@ -157,34 +157,34 @@ def generate_launch_description():
                 condition=IfCondition(enable_any_obd),
             ),
             Node(
-                package="murphy_p2",
+                package="r1",
                 executable="brain_node",
                 name="brain_node",
                 output="screen",
                 parameters=[{"latest_image_path": latest_image_path}],
             ),
             Node(
-                package="murphy_p2",
+                package="r1",
                 executable="audio_node",
                 name="audio_node",
                 output="screen",
                 parameters=[{"use_espeak": use_espeak}],
             ),
             Node(
-                package="murphy_p2",
+                package="r1",
                 executable="action_node",
                 name="action_node",
                 output="screen",
             ),
             Node(
-                package="murphy_p2",
+                package="r1",
                 executable="ear_node",
                 name="ear_node",
                 output="screen",
                 condition=IfCondition(enable_ear),
             ),
             Node(
-                package="murphy_slam",
+                package="r1_slam",
                 executable="monocular_slam_node",
                 name="monocular_slam_node",
                 output="screen",
@@ -200,7 +200,7 @@ def generate_launch_description():
                 condition=IfCondition(enable_slam),
             ),
             Node(
-                package="murphy_p2",
+                package="r1",
                 executable="vlm_node",
                 name="vlm_node",
                 output="screen",

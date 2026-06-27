@@ -19,7 +19,7 @@ class BrainNode(Node):
         super().__init__("brain_node")
         self.declare_parameter(
             "latest_image_path",
-            "/home/ubuntu/murphy_p2/latest_frame.jpg",
+            "/home/ubuntu/r1/latest_frame.jpg",
         )
 
         self.latest_image_path = self.get_parameter("latest_image_path").value
@@ -175,7 +175,7 @@ class BrainNode(Node):
 
         if text in ["hello", "hi"]:
             self.quiet_mode = False
-            self.say("Hello. Murphy P2 is online.")
+            self.say("Hello.  R1 is online.")
 
         elif text in ["stop", "quiet", "silence"]:
             self.quiet_mode = True

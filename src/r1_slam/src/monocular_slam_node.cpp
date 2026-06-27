@@ -1,4 +1,4 @@
-#include "murphy_slam/monocular_slam_node.hpp"
+#include "r1_slam/monocular_slam_node.hpp"
 
 #include <cv_bridge/cv_bridge.hpp>
 #include <geometry_msgs/msg/quaternion.hpp>
@@ -13,7 +13,7 @@
 #include <functional>
 #include <utility>
 
-namespace murphy_slam
+namespace r1_slam
 {
 
 namespace
@@ -344,12 +344,12 @@ geometry_msgs::msg::Quaternion MonocularSlamNode::rotationMatrixToQuaternion(
   return quaternion;
 }
 
-}  // namespace murphy_slam
+}  // namespace r1_slam
 
 int main(int argc, char ** argv)
 {
   rclcpp::init(argc, argv);
-  auto node = std::make_shared<murphy_slam::MonocularSlamNode>();
+  auto node = std::make_shared<r1_slam::MonocularSlamNode>();
   rclcpp::spin(node);
   rclcpp::shutdown();
   return 0;

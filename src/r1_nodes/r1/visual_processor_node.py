@@ -26,10 +26,10 @@ class VisualProcessorNode(Node):
         self._cleanup_done = False
 
         # Image saving setup with memory management
-        self.image_save_dir = os.path.expanduser("~/murphy_p2/vision_images")
+        self.image_save_dir = os.path.expanduser("~/r1/vision_images")
         os.makedirs(self.image_save_dir, exist_ok=True)
         
-        self.workspace_dir = os.path.expanduser("~/murphy_p2")
+        self.workspace_dir = os.path.expanduser("~/r1")
         self.latest_image_path = os.path.join(self.workspace_dir, "latest_frame.jpg")
         self.latest_image_meta_path = os.path.join(self.workspace_dir, "latest_frame.json")
         
@@ -161,7 +161,7 @@ class VisualProcessorNode(Node):
             self.yolo_debug_pub = None
 
             # model_name = "/home/ubuntu/murphy_p2/yolov8n.pt"
-            model_name = "/home/ubuntu/murphy_p2/yolov12n-face.onnx"
+            model_name = "/home/ubuntu/r1/data/models/yolov12n-face.onnx"
             self.model = YOLO(model_name)
             self.yolo_debug_pub = self.create_publisher(
                 CompressedImage,
